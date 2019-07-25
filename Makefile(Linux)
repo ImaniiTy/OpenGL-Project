@@ -1,0 +1,23 @@
+## freeglut Compile ##
+PROJ_NAME=main
+C_SOURCE=$(wildcard *.cpp)
+H_SOURCE=$(wildcard *.hpp)
+CC=g++
+CFLAGS=-Wall
+LDFLAGS=-lGL -lGLU -lglut
+OBJ=$(C_SOURCE:.cpp=.o)
+EXE=$(PROJ_NAME)
+
+all: $(EXE)
+
+$(EXE): $(OBJ)
+	$(CC) $^ $(LDFLAGS) -o $@
+
+%.o: %.cpp %.hpp
+	$(CC) $< $(CFLAGS) -o $@
+
+main.o: main.cpp $(H_SOURCE)
+	$(CC) $< $(CFLAGS) -o $@
+
+clean:
+	rm .\$(EXE)
