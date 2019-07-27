@@ -10,14 +10,18 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include "glm/glm.hpp"
+#include "glm/gtx/transform.hpp"
+#include "glm/gtx/rotate_vector.hpp"
 
 using namespace std;
 
-GLdouble posCameraX,posCameraY,posCameraZ;
-GLdouble initialDistance = 0.53,distance_ = 0.53, phi = 1, theta = 0, offsetTheta = 0, camAngleOffset = 40.0;
+GLdouble initialDistance = 0.53, distance_ = 0.53, phi = 180, theta = 0, steeringAngle = 0, camAngle = 20.0;
 GLdouble angularVelocity = 0, step = 0.0;
 array<GLfloat,3> sun {0.3, 0.4, 0.8};
 array<GLfloat,3> position {0.0, 0.0, 0.0};
+
+glm::vec3 camPosition(0.0, distance_, 0.0);
 
 float radius = 0.5;
 double xDirection = 1, yDirection = 1;
@@ -29,28 +33,18 @@ vector<Light> lights;
 
 #define RAD (M_PI / 180)
 #define PRINT_VALUE(value) printf("\n" #value ": %f", value)
-
-void updateCamPosition(void) {
-    posCameraY = distance_ * cos(phi * RAD);
-    posCameraZ = distance_ * sin(phi * RAD) * cos(theta * RAD);
-    posCameraX = distance_ * sin(phi * RAD) * sin(theta * RAD);
-}
-
-array<GLdouble, 3> calculatePosition(GLdouble phi, GLdouble theta) {
-    array<GLdouble, 3> position;
-
-    position[1] = distance_ * cos(phi * RAD);
-    position[2] = distance_ * sin(phi * RAD) * cos(theta * RAD);
-    position[0] = distance_ * sin(phi * RAD) * sin(theta * RAD);
-
-    return position;
-}
+#define PRINT_VALUEL(value) printf(" " #value ": %f", value)
 
 void calculateCamPosition() {
-    array<GLdouble, 3> offset = calculatePosition(phi + camAngleOffset, theta);
-    gluLookAt(posCameraX, posCameraY, posCameraZ, offset[0], offset[1], offset[2], posCameraX, posCameraY, posCameraZ);
-    glRotatef(offsetTheta, posCameraX, posCameraY, posCameraZ);
-    
+    glRotatef(180, 0.0f, 0.0f, 1.0f);
+    glRotatef(-camAngle, 1.0f, 0.0f, 0.0f);
+    glRotatef(steeringAngle, 0.0f, 1.0f, 0.0f);
+    glTranslatef(camPosition.x, camPosition.y, camPosition.z);
+
+    glm::vec3 steering = glm::vec3(sin(steeringAngle * RAD), 0.0, -cos(steeringAngle * RAD));
+    glm::vec3 rotationAxis = glm::cross(camPosition, steering);
+
+    glRotatef(phi, rotationAxis.x, rotationAxis.y, rotationAxis.z);
 }
 
 GLdouble lerp(GLdouble a, GLdouble b, double &t) {
@@ -71,33 +65,25 @@ void mouseHandler(int key, int state, int x, int y) {
         }
         break;
     }
-
-    updateCamPosition();
 }
 
 void specialKeys(int key, int x, int y) {
     switch (key) {
     case GLUT_KEY_LEFT:
-        offsetTheta = fmod(offsetTheta - 2.0, 360);
+        steeringAngle = fmod(steeringAngle - 2.0, 360);
         break;
     case GLUT_KEY_RIGHT:
-        offsetTheta = fmod(offsetTheta + 2.0, 360);
+        steeringAngle = fmod(steeringAngle + 2.0, 360);
         break;
     case GLUT_KEY_UP:
-        // phi = fmod(phi + 2, 360);
         angularVelocity += 0.1;
         break;
     case GLUT_KEY_DOWN:
         angularVelocity -= 0.1;
         break;
-    case GLUT_LEFT_BUTTON:
-        distance_ += 0.1;
-        break;
     }
 
-    updateCamPosition();
-    PRINT_VALUE(distance_);
-    std::cout << "\nX: "<< posCameraX << "\nY: " << posCameraY << "\nZ: "<< posCameraZ;
+    std::cout << "\nX: "<< camPosition.x << "\nY: " << camPosition.y << "\nZ: "<< camPosition.z;
     glutPostRedisplay();
 }
 
@@ -164,11 +150,8 @@ void init(void) {
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glEnable(GL_LIGHTING);
 
-    //light();
     glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_SMOOTH);
-
-    updateCamPosition();
 
     createObjects();
 
@@ -191,7 +174,7 @@ void idle() {
     this_thread::sleep_for(chrono::milliseconds(1000/60));
     phi = fmod(phi + angularVelocity, 360);
     if(lifting) {
-        distance_ = lerp(initialDistance, 0.6, step);
+        camPosition.y = lerp(initialDistance, 0.6, step);
         step+= 0.005;
         if(step >= 1.0) {
             step = 0;
@@ -200,15 +183,17 @@ void idle() {
         }
     }
     if(landing) {
-        distance_ = lerp(0.6, initialDistance, step);
+        camPosition.y = lerp(0.6, initialDistance, step);
         step+= 0.005;
         if(step >= 1.0) {
             step = 0;
             landing = false;
             flying = false;
+            angularVelocity = 0;
         }
     }
-    updateCamPosition();
+    calculateCamPosition();
+
     glutPostRedisplay();
 }
 
