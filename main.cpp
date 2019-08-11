@@ -2,14 +2,17 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "BasicTypes.hpp"
+#include "BasicBMPLoader.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
 #include <array>
 #include <vector>
 #include <chrono>
 #include <thread>
+#define GLM_FORCE_RADIANS
 #include "glm/glm.hpp"
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/rotate_vector.hpp"
@@ -39,7 +42,15 @@ void calculateCamPosition() {
     glRotatef(180, 0.0f, 0.0f, 1.0f);
     glRotatef(-camAngle, 1.0f, 0.0f, 0.0f);
     glRotatef(steeringAngle, 0.0f, 1.0f, 0.0f);
-    glTranslatef(camPosition.x, camPosition.y, camPosition.z);
+    // i = (PI / 2 - stackAngle) / (PI / heightMap.height)
+    // j = sectorangle / (2 * PI / heightMap.width)
+    BitMap heightMap = objects[0].getModel().heightMap;
+    int i = (phi / 360) * 64;
+    int j = ((180 + steeringAngle) / 360) * 64;
+    cout << i << endl;
+    cout << steeringAngle << endl;
+    float height = ((float) heightMap.getPixel(i % heightMap.height, j % heightMap.width) / 255) * 0.5;
+    glTranslatef(camPosition.x, height + camPosition.y, camPosition.z);
 
     glm::vec3 steering = glm::vec3(sin(steeringAngle * RAD), 0.0, -cos(steeringAngle * RAD));
     glm::vec3 rotationAxis = glm::cross(camPosition, steering);
@@ -70,7 +81,7 @@ void mouseHandler(int key, int state, int x, int y) {
 void specialKeys(int key, int x, int y) {
     switch (key) {
     case GLUT_KEY_LEFT:
-        steeringAngle = fmod(steeringAngle - 2.0, 360);
+        steeringAngle = fmod(steeringAngle - 2.0, 360) > 0 ? fmod(steeringAngle - 2.0, 360) : 360 - fmod(steeringAngle - 2.0, 360);
         break;
     case GLUT_KEY_RIGHT:
         steeringAngle = fmod(steeringAngle + 2.0, 360);
@@ -109,7 +120,6 @@ void drawAxis() {
 
 void display(void) {
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -127,7 +137,11 @@ void createObjects() {
     Material planetMaterial;
     planetMaterial.diffuse = {0.3, 0.3, 0.3, 1};
     planetMaterial.specular = {0.9, 0.9, 0.9, 0.3};
-    objects.push_back(Object(position, Model(radius, 200, 200), planetMaterial));
+    BitMap bm = BitMap::loadBMP("./teste.bmp");
+    Planet planetModel = Planet(bm);
+    planetMaterial.textureID = BitMap::loadBMP("./texture.bmp").loadTexture(true);
+    objects.push_back(Object(position, planetModel, planetMaterial));
+    cout << planetModel.size() << endl;
 }
 
 void createLights() {
@@ -141,7 +155,7 @@ void createLights() {
     lights.push_back(Light(sun, Model(0.08, 50, 50), sunMaterial, lightMaterial, GL_LIGHT1));
 
     Material ambientLight;
-    ambientLight.ambient = {0.3, 0.3, 0.3, 1};
+    ambientLight.ambient = {0.9, 0.9, 0.9, 1};
     ambientLight.specular = {0.1, 0.1, 0.1, 1};
     lights.push_back(Light(sun, Model(), Material(), ambientLight, GL_LIGHT0));
 }
@@ -197,6 +211,38 @@ void idle() {
     glutPostRedisplay();
 }
 
+// typedef struct BitMap {
+//     uint16_t width;
+//     uint16_t height;
+//     uint8_t *data;
+// } BitMap;
+
+// BitMap openBMP(const char* path) {
+//     BitMap bm;
+//     uint8_t info[54];
+//     uint8_t *data;
+
+//     ifstream file(path, ios::binary);
+//     file.read((char*)info, 54);
+
+//     uint32_t sizeImage = *(uint32_t*)&info[34];
+//     uint32_t dataOffset = *(uint32_t*)&info[10];
+//     uint16_t width = *(uint16_t*)&info[18];
+//     uint16_t height = *(uint16_t*)&info[20];
+
+//     file.seekg(dataOffset);
+//     data = new uint8_t[sizeImage];
+//     file.read((char*)data, sizeImage);
+
+//     bm.width = width;
+//     bm.height = height;
+//     bm.data = data;
+
+//     cout << (int) bm.data[(79*112 + 1) * 3] << endl;
+
+//     return bm;
+// }
+
 int main(int argc, char **argv) {
     // std::cout << "Digite a posicao do sol (Ex: 0.3 0.4 0.8):\n";
     // std::cin >> sun[0];
@@ -220,6 +266,8 @@ int main(int argc, char **argv) {
     glutIdleFunc(idle);
 
     glutMainLoop();
+
+    // BitMap bm = BitMap::loadBMP("./teste.bmp");
 
     return 0;
 }

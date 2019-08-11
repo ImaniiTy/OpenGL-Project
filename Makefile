@@ -14,10 +14,10 @@ $(EXE): $(OBJ)
 	$(CC) $^ $(LDFLAGS) -o $@
 
 %.o: %.cpp %.hpp
-	$(CC) $< $(CFLAGS) -o $@
+	$(CC) $< $(CFLAGS) -g -o $@
 
 main.o: main.cpp $(H_SOURCE)
-	$(CC) $< $(CFLAGS) -o $@
+	$(CC) $< $(CFLAGS) -g -o $@
 
 clean:
 	rm ".\$(EXE)"
