@@ -27,6 +27,7 @@ array<GLfloat,3> position {0.0, 0.0, 0.0};
 glm::vec3 camPosition(0.0, distance_, 0.0);
 glm::vec3 camPivot(0.0, distance_ - 0.08, 0.1);
 glm::vec3 camPositionAux(0.0, distance_ + 0.03, 0.0);
+float lastHeight = 0;
 
 float radius = 0.6;
 double xDirection = 1, yDirection = 1;
@@ -38,18 +39,11 @@ vector<Object> objects;
 vector<Light> lights;
 
 #define RAD (M_PI / 180)
+#define DEGREE (180 / M_PI)
 #define PRINT_VALUE(value) printf("\n" #value ": %f", value)
 #define PRINT_VALUEL(value) printf(" " #value ": %f", value)
 
 void calculateCamPosition() {
-    BitMap heightMap = objects[0].getModel().heightMap;
-    int i = (phi / 360) * heightMap.width;
-    int j = (steeringAngle / 360) * heightMap.height;
-    // cout << "\r" << "phi: "<< phi << "  i: " << i
-    //      << " | steeringAngle: " << steeringAngle << "  j: " << j 
-    //      << " | Pixel: " << (int) heightMap.getPixel(i % heightMap.height, j % heightMap.width) << flush;
-    // cout << endl;
-    float height = ((float) heightMap.getPixel(i % heightMap.height, j % heightMap.width) / 255) * 0.5;
     glm::mat4 camTranslateM = glm::translate(camPosition);
     glm::mat4 pivotTranslateM = glm::translate(camPosition);
     glm::mat4 steeringM =  glm::rotate((float)steeringAngle, camPosition);
