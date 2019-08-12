@@ -141,8 +141,8 @@ void createObjects() {
     Material planetMaterial;
     planetMaterial.diffuse = {0.3, 0.3, 0.3, 1};
     planetMaterial.specular = {0.9, 0.9, 0.9, 0.3};
-    planetMaterial.textureID = BitMap::loadBMP("./texture.bmp").loadTexture(true);
-    Planet planetModel = Planet(BitMap::loadBMP("./teste.bmp"));
+    planetMaterial.textureID = BitMap::loadBMP("./textures/texture.bmp").loadTexture(true);
+    Planet planetModel = Planet(BitMap::loadBMP("./textures/teste.bmp"));
     objects.push_back(Object(position, planetModel, planetMaterial));
 }
 
