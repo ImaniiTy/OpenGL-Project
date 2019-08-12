@@ -19,18 +19,21 @@
 
 using namespace std;
 
-GLdouble initialDistance = 0.53, distance_ = 0.53, phi = 180, theta = 0, steeringAngle = 0, camAngle = 20.0;
-GLdouble angularVelocity = 0, step = 0.0;
+GLdouble distance_ = 0.72, phi = 180, theta = 0, steeringAngle = 0, camAngle = 20.0;
+GLdouble angularVelocity = 0.0, step = 0.0;
 array<GLfloat,3> sun {0.3, 0.4, 0.8};
 array<GLfloat,3> position {0.0, 0.0, 0.0};
 
 glm::vec3 camPosition(0.0, distance_, 0.0);
+glm::vec3 camPivot(0.0, distance_ - 0.08, 0.1);
+glm::vec3 camPositionAux(0.0, distance_ + 0.03, 0.0);
 
-float radius = 0.5;
+float radius = 0.6;
 double xDirection = 1, yDirection = 1;
 
 bool lifting = false, landing = false, flying = false;
 
+Planet flat = Planet(BitMap::loadBMP("./flat.bmp"));
 vector<Object> objects;
 vector<Light> lights;
 
@@ -39,23 +42,24 @@ vector<Light> lights;
 #define PRINT_VALUEL(value) printf(" " #value ": %f", value)
 
 void calculateCamPosition() {
-    glRotatef(180, 0.0f, 0.0f, 1.0f);
-    glRotatef(-camAngle, 1.0f, 0.0f, 0.0f);
-    glRotatef(steeringAngle, 0.0f, 1.0f, 0.0f);
-    // i = (PI / 2 - stackAngle) / (PI / heightMap.height)
-    // j = sectorangle / (2 * PI / heightMap.width)
     BitMap heightMap = objects[0].getModel().heightMap;
-    int i = (phi / 360) * 64;
-    int j = ((180 + steeringAngle) / 360) * 64;
-    cout << i << endl;
-    cout << steeringAngle << endl;
+    int i = (phi / 360) * heightMap.width;
+    int j = (steeringAngle / 360) * heightMap.height;
+    // cout << "\r" << "phi: "<< phi << "  i: " << i
+    //      << " | steeringAngle: " << steeringAngle << "  j: " << j 
+    //      << " | Pixel: " << (int) heightMap.getPixel(i % heightMap.height, j % heightMap.width) << flush;
+    // cout << endl;
     float height = ((float) heightMap.getPixel(i % heightMap.height, j % heightMap.width) / 255) * 0.5;
-    glTranslatef(camPosition.x, height + camPosition.y, camPosition.z);
+    glm::mat4 camTranslateM = glm::translate(camPosition);
+    glm::mat4 pivotTranslateM = glm::translate(camPosition);
+    glm::mat4 steeringM =  glm::rotate((float)steeringAngle, camPosition);
+    glm::vec3 rotationAxis = glm::cross(camPosition, camPivot - camPosition);
+    glm::mat4 rotationM = glm::rotate((float)angularVelocity, rotationAxis);
 
-    glm::vec3 steering = glm::vec3(sin(steeringAngle * RAD), 0.0, -cos(steeringAngle * RAD));
-    glm::vec3 rotationAxis = glm::cross(camPosition, steering);
+    camPosition = glm::vec3(glm::vec4(camPosition.x, camPosition.y, camPosition.z, 1) * rotationM * camTranslateM);
+    camPivot = glm::vec3(glm::vec4(camPivot.x, camPivot.y, camPivot.z, 1) * rotationM * steeringM * pivotTranslateM);
 
-    glRotatef(phi, rotationAxis.x, rotationAxis.y, rotationAxis.z);
+    gluLookAt(camPosition.x, camPosition.y, camPosition.z, camPivot.x, camPivot.y, camPivot.z, camPosition.x, camPosition.y, camPosition.z);
 }
 
 GLdouble lerp(GLdouble a, GLdouble b, double &t) {
@@ -65,13 +69,13 @@ GLdouble lerp(GLdouble a, GLdouble b, double &t) {
 void mouseHandler(int key, int state, int x, int y) {
     switch (key) {
     case GLUT_LEFT_BUTTON:
-        if(!landing && !flying){
+        if(!landing){
             lifting = true;
-            angularVelocity += 0.1;
+            // angularVelocity -= 0.01;
         }
         break;
     case GLUT_RIGHT_BUTTON:
-        if(!lifting && flying){
+        if(!lifting){
             landing = true;
         }
         break;
@@ -81,20 +85,20 @@ void mouseHandler(int key, int state, int x, int y) {
 void specialKeys(int key, int x, int y) {
     switch (key) {
     case GLUT_KEY_LEFT:
-        steeringAngle = fmod(steeringAngle - 2.0, 360) > 0 ? fmod(steeringAngle - 2.0, 360) : 360 - fmod(steeringAngle - 2.0, 360);
+        // steeringAngle = fmod(steeringAngle - 2.0, 360) > 0 ? fmod(steeringAngle - 2.0, 360) : 360 - fmod(steeringAngle - 2.0, 360);
+        steeringAngle = fmod(steeringAngle - 0.005, 360);
         break;
     case GLUT_KEY_RIGHT:
-        steeringAngle = fmod(steeringAngle + 2.0, 360);
+        steeringAngle = fmod(steeringAngle + 0.005, 360);
         break;
     case GLUT_KEY_UP:
-        angularVelocity += 0.1;
+        angularVelocity -= 0.0035;
         break;
     case GLUT_KEY_DOWN:
-        angularVelocity -= 0.1;
+        angularVelocity += 0.0035;
         break;
     }
 
-    std::cout << "\nX: "<< camPosition.x << "\nY: " << camPosition.y << "\nZ: "<< camPosition.z;
     glutPostRedisplay();
 }
 
@@ -137,11 +141,9 @@ void createObjects() {
     Material planetMaterial;
     planetMaterial.diffuse = {0.3, 0.3, 0.3, 1};
     planetMaterial.specular = {0.9, 0.9, 0.9, 0.3};
-    BitMap bm = BitMap::loadBMP("./teste.bmp");
-    Planet planetModel = Planet(bm);
     planetMaterial.textureID = BitMap::loadBMP("./texture.bmp").loadTexture(true);
+    Planet planetModel = Planet(BitMap::loadBMP("./teste.bmp"));
     objects.push_back(Object(position, planetModel, planetMaterial));
-    cout << planetModel.size() << endl;
 }
 
 void createLights() {
@@ -188,60 +190,29 @@ void idle() {
     this_thread::sleep_for(chrono::milliseconds(1000/60));
     phi = fmod(phi + angularVelocity, 360);
     if(lifting) {
-        camPosition.y = lerp(initialDistance, 0.6, step);
-        step+= 0.005;
-        if(step >= 1.0) {
-            step = 0;
+        if(glm::length(camPosition) >= glm::length(camPositionAux)) {
             lifting = false;
-            flying = true;
+            camPositionAux = glm::vec3(0.0f, distance_, 0.0f);
+        } else {
+            camPosition = camPosition * 1.001f; 
         }
     }
     if(landing) {
-        camPosition.y = lerp(0.6, initialDistance, step);
-        step+= 0.005;
-        if(step >= 1.0) {
-            step = 0;
+        if(glm::length(camPosition) <= glm::length(camPositionAux)) {
             landing = false;
-            flying = false;
-            angularVelocity = 0;
+            camPositionAux = glm::vec3(0.0f, distance_ + 0.03, 0.0f);
+        } else {
+            camPosition = camPosition * 0.999f; 
+            cout << "\r" << camPosition.y << " | " << camPositionAux.y << flush;
         }
     }
     calculateCamPosition();
-
+    // Model planet = objects[0].getModel();
+    // planet.vertices[(64*64*camPosition.x + 64*camPosition.y + camPosition.z) * 3] = flat.vertices[(64*64*camPosition.x + 64*camPosition.y + camPosition.z) * 3];
+    // planet.vertices[(64*64*camPosition.x + 64*camPosition.y + camPosition.z) * 3 + 1] = flat.vertices[(64*64*camPosition.x + 64*camPosition.y + camPosition.z) * 3 + 1];
+    // planet.vertices[(64*64*camPosition.x + 64*camPosition.y + camPosition.z) * 3 + 2] = flat.vertices[(64*64*camPosition.x + 64*camPosition.y + camPosition.z) * 3 + 2];
     glutPostRedisplay();
 }
-
-// typedef struct BitMap {
-//     uint16_t width;
-//     uint16_t height;
-//     uint8_t *data;
-// } BitMap;
-
-// BitMap openBMP(const char* path) {
-//     BitMap bm;
-//     uint8_t info[54];
-//     uint8_t *data;
-
-//     ifstream file(path, ios::binary);
-//     file.read((char*)info, 54);
-
-//     uint32_t sizeImage = *(uint32_t*)&info[34];
-//     uint32_t dataOffset = *(uint32_t*)&info[10];
-//     uint16_t width = *(uint16_t*)&info[18];
-//     uint16_t height = *(uint16_t*)&info[20];
-
-//     file.seekg(dataOffset);
-//     data = new uint8_t[sizeImage];
-//     file.read((char*)data, sizeImage);
-
-//     bm.width = width;
-//     bm.height = height;
-//     bm.data = data;
-
-//     cout << (int) bm.data[(79*112 + 1) * 3] << endl;
-
-//     return bm;
-// }
 
 int main(int argc, char **argv) {
     // std::cout << "Digite a posicao do sol (Ex: 0.3 0.4 0.8):\n";
@@ -266,8 +237,6 @@ int main(int argc, char **argv) {
     glutIdleFunc(idle);
 
     glutMainLoop();
-
-    // BitMap bm = BitMap::loadBMP("./teste.bmp");
 
     return 0;
 }

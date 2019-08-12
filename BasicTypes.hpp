@@ -20,9 +20,9 @@ struct Material {
 
 class Model {
     public:
-        GLdouble radius = -1.0;
-        GLint vResolution;
-        GLint hResolution;
+        GLdouble radius = 0.6;
+        GLint vResolution = -1;
+        GLint hResolution = -1;
         vector<float> vertices;
         vector<float> normals;
         vector<float> texCoords;
@@ -52,7 +52,7 @@ class Object {
         Object(array<GLfloat,3> position, Model model, Material material);
 
         Material getMaterial();
-        Model getModel();
+        Model& getModel();
 
         array<GLfloat,3> getPosition();
         void setPosition(array<GLfloat,3> newPosition);

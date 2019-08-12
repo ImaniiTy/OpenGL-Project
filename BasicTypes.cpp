@@ -57,7 +57,7 @@ Material Object::getMaterial(){
     return material;
 }
 
-Model Object::getModel() {
+Model& Object::getModel() {
     return model;
 }
 
@@ -77,7 +77,7 @@ Model::Model(GLdouble radius, GLint vResolution, GLint hResolution)
 Model::Model() {}
 
 void Model::render() {
-    if(radius > 0){
+    if(hResolution > 0){
         glutSolidSphere(radius, vResolution, hResolution);
     } else {
         glDrawElements(GL_TRIANGLES, (unsigned int)indices.size(), GL_UNSIGNED_INT,  indices.data());
@@ -113,7 +113,6 @@ Planet::Planet(BitMap heightMap_)
     :Model() {
     heightMap = heightMap_;
     buildVerticesSphere();
-    cout << size() << endl;
 }
 
 void Planet::render() {
@@ -125,7 +124,6 @@ void Planet::buildVerticesSphere() {
     const float PI = 3.1415926f;
     int sectorCount = heightMap.width;
     int stackCount = heightMap.height;
-    float radius = 0.4;
 
     float x, y, z, xy;                              // vertex position
     float nx, ny, nz, lengthInv = 1.0f / radius;    // normal
