@@ -33,7 +33,7 @@ double xDirection = 1, yDirection = 1;
 
 bool lifting = false, landing = false, flying = false;
 
-Planet flat = Planet(BitMap::loadBMP("./flat.bmp"));
+Planet flat = Planet(BitMap::loadBMP("./textures/flat.bmp"));
 vector<Object> objects;
 vector<Light> lights;
 

@@ -3,7 +3,7 @@ PROJ_NAME=main
 C_SOURCE=$(wildcard *.cpp)
 H_SOURCE=$(wildcard *.hpp)
 CC=g++
-CFLAGS=-Wall
+CFLAGS=-c -Wall
 LDFLAGS=-lGL -lGLU -lglut
 OBJ=$(C_SOURCE:.cpp=.o)
 EXE=$(PROJ_NAME)
