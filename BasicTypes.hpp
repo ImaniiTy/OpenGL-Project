@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 #include "BasicBMPLoader.hpp"
+#include "glm/glm.hpp"
 
 using namespace std;
 
@@ -28,6 +29,8 @@ class Model {
         vector<float> texCoords;
         vector<unsigned int> indices;
         BitMap heightMap;
+        GLUquadric *quadratic = NULL;
+        float normalDirection = 1.0f;
 
         Model(GLdouble radius, GLint vResolution, GLint hResolution);
         Model();
@@ -37,6 +40,8 @@ class Model {
         int size() {
             return indices.size();
         };
+
+        void rebuildTextureCoords(); 
 };
 
 class Object {
@@ -44,6 +49,11 @@ class Object {
         Model model;
         Material material;
         array<GLfloat,3> position;
+
+    public:
+        glm::vec3 getPosition();
+        array<GLfloat,3> rotationAxis;
+        GLfloat rotationAngle = 0.0f;
 
     private:
         void applyMaterials();
@@ -54,8 +64,10 @@ class Object {
         Material getMaterial();
         Model& getModel();
 
-        array<GLfloat,3> getPosition();
-        void setPosition(array<GLfloat,3> newPosition);
+        void setModel(Model model_);
+
+
+        void setPosition(glm::vec3 newPosition);
 
         void draw();
 
@@ -82,11 +94,13 @@ class Planet : public Model {
 
     public:
         Planet(BitMap heightMap);
+        Planet(BitMap heightMap_, GLdouble radius);
+        Planet(BitMap heightMap_, GLdouble radius, float normalDirection);
 
         void render();
 
     public:
-        void buildVerticesSphere();    
+        void buildVerticesSphere();
 };
 
 #endif

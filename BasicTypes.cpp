@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
+#include "glm/glm.hpp"
 
 using namespace std;
 
@@ -11,17 +12,13 @@ using namespace std;
 
 //-----Object-----
 Object::Object(array<GLfloat,3> position, Model model, Material material)
-    : position(position), model(model), material(material) {
-    
-    //applyMaterials();
-}
+    : position(position), model(model), material(material) {}
 
 void Object::applyMaterials() {
     glMaterialfv(GL_FRONT, GL_SPECULAR, material.specular.data());
     glMaterialfv(GL_FRONT, GL_DIFFUSE, material.diffuse.data());
     glMaterialfv(GL_FRONT, GL_EMISSION, material.emission.data());
     glMaterialfv(GL_FRONT, GL_SHININESS, material.shininess.data());
-    glColor3fv(material.color.data());
 }
 
 void Object::draw() {
@@ -39,10 +36,15 @@ void Object::draw() {
         glBindTexture(GL_TEXTURE_2D, material.textureID);
         glTexCoordPointer(2, GL_FLOAT, 0, model.texCoords.data());
     }
+    // glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
     glPushAttrib(GL_LIGHTING_BIT);
         applyMaterials();
         glPushMatrix();
             glTranslatef(position[0], position[1], position[2]);
+            if(rotationAngle > 0) {
+                glRotatef(rotationAngle, rotationAxis[0], rotationAxis[1], rotationAxis[2]);
+            }
+            glColor3fv(material.color.data());
             model.render();
         glPopMatrix();
     glPopAttrib();
@@ -61,26 +63,45 @@ Model& Object::getModel() {
     return model;
 }
 
-array<GLfloat,3> Object::getPosition() {
-    return position;
+void Object::setModel(Model model_) {
+    model = model_;
 }
 
-void Object::setPosition(array<GLfloat,3> newPosition) {
-    position = newPosition;
+glm::vec3 Object::getPosition() {
+    return glm::vec3(position[0], position[1], position[2]);
+}
+
+void Object::setPosition(glm::vec3 newPosition) {
+    position = {newPosition.x, newPosition.y, newPosition.z};
 }
 //-----Object-----
 
 //-----Model-----
 Model::Model(GLdouble radius, GLint vResolution, GLint hResolution) 
-    : radius(radius), vResolution(vResolution), hResolution(hResolution) {}
+    : radius(radius), vResolution(vResolution), hResolution(hResolution), quadratic(gluNewQuadric()) {}
 
 Model::Model() {}
 
 void Model::render() {
     if(hResolution > 0){
-        glutSolidSphere(radius, vResolution, hResolution);
+        // glRotatef(90,0,1,0);
+        gluSphere(quadratic, 0.08, hResolution, vResolution);
     } else {
         glDrawElements(GL_TRIANGLES, (unsigned int)indices.size(), GL_UNSIGNED_INT,  indices.data());
+    }
+}
+
+void Model::rebuildTextureCoords() {
+    int sectorCount = heightMap.width;
+    int stackCount = heightMap.height;
+
+    vector<float>().swap(texCoords);
+
+    for (size_t i = 0; i <= stackCount; i++) {
+        for (size_t j = 0; j <= sectorCount; j++) {
+            texCoords.push_back((float)j / sectorCount);
+            texCoords.push_back((float)i / stackCount);
+        }
     }
 }
 //-----Model-----
@@ -93,17 +114,17 @@ void Light::applyLightMaterials() {
     glLightfv(id, GL_SPECULAR, lightMaterial.specular.data());
     glLightfv(id, GL_DIFFUSE, lightMaterial.diffuse.data());
     glLightfv(id, GL_AMBIENT, lightMaterial.ambient.data());
-
-    glEnable(id);
 }
 
 void Light::draw() {
     // glPushAttrib(GL_LIGHTING_BIT);
     applyLightMaterials();
     glPushMatrix();
-        glLightfv(GL_LIGHT1, GL_POSITION, position.data());
+        GLfloat pos4[4] = {position[0], position[1], position[2], 1.0f};
+        glLightfv(GL_LIGHT1, GL_POSITION, pos4);
     glPopMatrix();
     // glPopAttrib();
+    glEnable(id);
     Object::draw();
 }
 //-----Light-----
@@ -115,8 +136,23 @@ Planet::Planet(BitMap heightMap_)
     buildVerticesSphere();
 }
 
+Planet::Planet(BitMap heightMap_, GLdouble radius_)
+    :Model() {
+    radius = radius_;
+    heightMap = heightMap_;
+    buildVerticesSphere();
+}
+
+Planet::Planet(BitMap heightMap_, GLdouble radius_, float normalDirection_)
+    :Model() {
+    normalDirection = normalDirection_;
+    radius = radius_;
+    heightMap = heightMap_;
+    buildVerticesSphere();
+}
+
 void Planet::render() {
-    glColor3f (1, 1, 1);
+    // glCullFace(GL_FRONT_AND_BACK);
     glDrawElements(GL_TRIANGLES, (unsigned int)indices.size(), GL_UNSIGNED_INT,  indices.data());
 }
 
@@ -124,9 +160,10 @@ void Planet::buildVerticesSphere() {
     const float PI = 3.1415926f;
     int sectorCount = heightMap.width;
     int stackCount = heightMap.height;
+    cout << radius << endl;
 
     float x, y, z, xy;                              // vertex position
-    float nx, ny, nz, lengthInv = 1.0f / radius;    // normal
+    float nx, ny, nz, lengthInv = normalDirection / radius;    // normal
     float s, t;                                     // texCoord
 
     float sectorStep = 2 * PI / sectorCount;
